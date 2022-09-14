@@ -60,16 +60,22 @@ var requireAccessToken = function (req, res, next) {
 var savedWords = [];
 
 app.get('/words', getAccessToken, requireAccessToken, function (req, res) {
-  /*
-   * Make this function require the "read" scope
-   */
+  if (!__.contains(req.access_token.scope, 'read')) {
+    res.set('WWW-Authenticate', 'Bearer realm=localhost:9002, error="insufficient_scope", scope="read"');
+    res.status(403).end();
+    return;
+  }
+
   res.json({ words: savedWords.join(' '), timestamp: Date.now() });
 });
 
 app.post('/words', getAccessToken, requireAccessToken, function (req, res) {
-  /*
-   * Make this function require the "write" scope
-   */
+  if (!__.contains(req.access_token.scope, 'write')) {
+    res.set('WWW-Authenticate', 'Bearer realm=localhost:9002, error="insufficient_scope", scope="write"');
+    res.status(403).end();
+    return;
+  }
+
   if (req.body.word) {
     savedWords.push(req.body.word);
   }
@@ -77,9 +83,12 @@ app.post('/words', getAccessToken, requireAccessToken, function (req, res) {
 });
 
 app.delete('/words', getAccessToken, requireAccessToken, function (req, res) {
-  /*
-   * Make this function require the "delete" scope
-   */
+  if (!__.contains(req.access_token.scope, 'delete')) {
+    res.set('WWW-Authenticate', 'Bearer realm=localhost:9002, error="insufficient_scope", scope="delete"');
+    res.status(403).end();
+    return;
+  }
+
   savedWords.pop();
   res.status(204).end();
 });
