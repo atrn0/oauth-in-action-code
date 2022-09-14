@@ -18,55 +18,60 @@ app.use('/', express.static('files/protectedResource'));
 app.use(cors());
 
 var resource = {
-	"name": "Protected Resource",
-	"description": "This data has been protected by OAuth 2.0"
+  "name": "Protected Resource",
+  "description": "This data has been protected by OAuth 2.0"
 };
 
-var getAccessToken = function(req, res, next) {
-	var inToken = null;
-	var auth = req.headers['authorization'];
-	if (auth && auth.toLowerCase().indexOf('bearer') == 0) {
-		inToken = auth.slice('bearer '.length);
-	} else if (req.body && req.body.access_token) {
-		inToken = req.body.access_token;
-	} else if (req.query && req.query.access_token) {
-		inToken = req.query.access_token
-	}
-	
-	console.log('Incoming token: %s', inToken);
-	nosql.one().make(function(builder) {
-	  builder.where('access_token', inToken);
-	  builder.callback(function(err, token) {
-	    if (token) {
-	      console.log("We found a matching token: %s", inToken);
-	    } else {
-	      console.log('No matching token was found.');
-	    };
-	    req.access_token = token;
-	    next();
-	    return;
-	  });
-	});
+var getAccessToken = function (req, res, next) {
+  var inToken = null;
+  var auth = req.headers['authorization'];
+  if (auth && auth.toLowerCase().indexOf('bearer') == 0) {
+    inToken = auth.slice('bearer '.length);
+  } else if (req.body && req.body.access_token) {
+    inToken = req.body.access_token;
+  } else if (req.query && req.query.access_token) {
+    inToken = req.query.access_token
+  }
+
+  console.log('Incoming token: %s', inToken);
+  nosql.one().make(function (builder) {
+    builder.where('access_token', inToken);
+    builder.callback(function (err, token) {
+      if (token) {
+        console.log("We found a matching token: %s", inToken);
+      } else {
+        console.log('No matching token was found.');
+      };
+      req.access_token = token;
+      next();
+      return;
+    });
+  });
 };
 
-var requireAccessToken = function(req, res, next) {
-	if (req.access_token) {
-		next();
-	} else {
-		res.status(401).end();
-	}
+var requireAccessToken = function (req, res, next) {
+  if (req.access_token) {
+    next();
+  } else {
+    res.status(401).end();
+  }
 };
 
-app.get('/produce', getAccessToken, requireAccessToken, function(req, res) {
-	var produce = {fruit: ['apple', 'banana', 'kiwi'], 
-		veggies: ['lettuce', 'onion', 'potato'], 
-		meats: ['bacon', 'steak', 'chicken breast']};	
+app.get('/produce', getAccessToken, requireAccessToken, function (req, res) {
+  var produce = {
+    fruit: [],
+    veggies: [],
+    meats: []
+  };
 
-	/*
-	 * Add different kinds of produce based on the incoming token's scope
-	 */
+  if (__.contains(req.access_token.scope, 'fruit'))
+    produce.fruit = ['apple', 'banana', 'kiwi']
+  if (__.contains(req.access_token.scope, 'veggies'))
+    produce.veggies = ['lettuce', 'onion', 'potato']
+  if (__.contains(req.access_token.scope, 'meats'))
+    produce.meats = ['bacon', 'steak', 'chicken breast']
 
-	res.json(produce);
+  res.json(produce);
 });
 
 var server = app.listen(9002, 'localhost', function () {
@@ -75,4 +80,4 @@ var server = app.listen(9002, 'localhost', function () {
 
   console.log('OAuth Resource Server is listening at http://%s:%s', host, port);
 });
- 
+
