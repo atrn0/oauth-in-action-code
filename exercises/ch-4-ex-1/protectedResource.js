@@ -18,29 +18,46 @@ app.use('/', express.static('files/protectedResource'));
 app.use(cors());
 
 var resource = {
-	"name": "Protected Resource",
-	"description": "This data has been protected by OAuth 2.0"
+  "name": "Protected Resource",
+  "description": "This data has been protected by OAuth 2.0"
 };
 
-var getAccessToken = function(req, res, next) {
-	/*
-	 * Scan for an access token on the incoming request.
-	 */
-	
+var getAccessToken = function (req, res, next) {
+  let inToken;
+
+  const auth = req.headers['authorization'];
+  if (auth && auth.toLowerCase().indexOf('bearer') === 0) // Authorization header
+    inToken = auth.slice('brerer '.length);
+  else if (req.body && req.body.access_token) // Form-Encoded Body Parameter
+    inToken = req.body.access_token;
+  else if (req.query && req.query.access_token) // URI Query Parameter
+    inToken = req.query.access_token;
+
+  console.log('Incoming token: %s', inToken);
+
+  nosql.one().make(function (builder) {
+    builder.where('access_token', inToken);
+    builder.callback(function (err, token) {
+      if (token) {
+        console.log("We found a matching token: %s", inToken);
+      } else {
+        console.log('No matching token was found.');
+      };
+      req.access_token = token;
+      next();
+      return;
+    });
+  });
 };
 
 app.options('/resource', cors());
 
-
-/*
- * Add the getAccessToken function to this handler
- */
-app.post("/resource", cors(), function(req, res){
-
-	/*
-	 * Check to see if the access token was found or not
-	 */
-	
+app.post("/resource", cors(), getAccessToken, function (req, res) {
+  if (req.access_token) {
+    res.json(resource);
+    return;
+  }
+  res.status(401).end();
 });
 
 var server = app.listen(9002, 'localhost', function () {
@@ -49,4 +66,3 @@ var server = app.listen(9002, 'localhost', function () {
 
   console.log('OAuth Resource Server is listening at http://%s:%s', host, port);
 });
- 
